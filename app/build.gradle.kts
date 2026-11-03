@@ -18,6 +18,9 @@ val localProperties = Properties().apply {
 }
 val supabaseUrl = localProperties.getProperty("SUPABASE_URL") ?: System.getenv("SUPABASE_URL") ?: ""
 val supabaseAnonKey = localProperties.getProperty("SUPABASE_ANON_KEY") ?: System.getenv("SUPABASE_ANON_KEY") ?: ""
+val supabaseServiceRoleKey = localProperties.getProperty("SUPABASE_SERVICE_ROLE_KEY") ?: System.getenv("SUPABASE_SERVICE_ROLE_KEY") ?: ""
+val firebaseApiKey = localProperties.getProperty("FIREBASE_API_KEY") ?: System.getenv("FIREBASE_API_KEY") ?: ""
+val firebaseProjectId = localProperties.getProperty("FIREBASE_PROJECT_ID") ?: System.getenv("FIREBASE_PROJECT_ID") ?: ""
 
 ksp {
     arg("room.schemaLocation", "$projectDir/schemas")
@@ -38,6 +41,9 @@ android {
 
         buildConfigField("String", "SUPABASE_URL", "\"$supabaseUrl\"")
         buildConfigField("String", "SUPABASE_ANON_KEY", "\"$supabaseAnonKey\"")
+        buildConfigField("String", "SUPABASE_SERVICE_ROLE_KEY", "\"$supabaseServiceRoleKey\"")
+        buildConfigField("String", "FIREBASE_API_KEY", "\"$firebaseApiKey\"")
+        buildConfigField("String", "FIREBASE_PROJECT_ID", "\"$firebaseProjectId\"")
     }
 
     buildTypes {

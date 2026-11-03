@@ -15,8 +15,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-
-
 @HiltViewModel
 class QuestionResolveContestViewModel @Inject constructor(
     private val contestRepository: ContestRepository,
@@ -46,7 +44,30 @@ class QuestionResolveContestViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true)
 
-            // Reseta respostas anteriores para iniciar simulado novo limpo
+            // 1. Tenta buscar o simulado unificado via camada NoSQL/Cache (Firebase Firestore Cache-Aside)
+            when (val cacheAsideResult = questionRepository.getMockExamCacheAside(contestId)) {
+                is Result.Success -> {
+                    val lookup = cacheAsideResult.data
+                    val unifiedFromDoc = lookup.document.questions.map { item ->
+                        QuestionWithDiscipline(
+                            question = item.toDomainQuestion(),
+                            disciplineName = item.disciplineName
+                        )
+                    }
+                    _uiState.value = _uiState.value.copy(
+                        contestTitle = lookup.document.contestTitle,
+                        questions = unifiedFromDoc,
+                        isLoading = false,
+                        currentQuestionStartTime = System.currentTimeMillis()
+                    )
+                    return@launch
+                }
+                else -> {
+                    // Fallback para o caminho relacional legado caso a camada de cache não esteja ativa (ex: mocks)
+                }
+            }
+
+            // Reseta respostas anteriores para iniciar simulado novo limpo (Caminho Relacional Legado)
             questionRepository.resetQuestionsForContest(contestId)
 
             // Carrega Concurso

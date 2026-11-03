@@ -3,7 +3,9 @@ package com.rememberflash.app.data.repository
 import com.rememberflash.app.data.local.database.dao.QuestionDao
 import com.rememberflash.app.data.mapper.toDomain
 import com.rememberflash.app.data.mapper.toEntity
+import com.rememberflash.app.data.remote.firebase.MockExamCacheService
 import com.rememberflash.app.domain.common.Result
+import com.rememberflash.app.domain.model.MockExamLookupResult
 import com.rememberflash.app.domain.model.Question
 import com.rememberflash.app.domain.repository.QuestionRepository
 import kotlinx.coroutines.flow.Flow
@@ -14,7 +16,8 @@ import javax.inject.Singleton
 @Singleton
 class QuestionRepositoryImpl @Inject constructor(
     private val questionDao: QuestionDao,
-    private val mockExamAttemptDao: com.rememberflash.app.data.local.database.dao.MockExamAttemptDao
+    private val mockExamAttemptDao: com.rememberflash.app.data.local.database.dao.MockExamAttemptDao,
+    private val mockExamCacheService: MockExamCacheService
 ) : QuestionRepository {
 
     override fun getQuestionsByDiscipline(disciplineId: Long): Flow<List<Question>> {
@@ -25,8 +28,14 @@ class QuestionRepositoryImpl @Inject constructor(
 
     override suspend fun saveQuestions(questions: List<Question>): Result<Unit> {
         return try {
+            // 1. Regra de Ouro do Cache-Aside: Grava primeiro na Fonte da Verdade (Relacional)
             val entities = questions.map { it.toEntity() }
             questionDao.insertAll(entities)
+
+            // 2. Invalidação na Escrita (Write Invalidation): apaga a chave do simulado correspondente no NoSQL
+            questions.map { it.disciplineId }.distinct().forEach { discId ->
+                mockExamCacheService.invalidateCacheForDiscipline(discId)
+            }
             Result.success(Unit)
         } catch (e: Exception) {
             Result.error("Falha ao salvar lote de questões: ${e.localizedMessage}", e)
@@ -36,6 +45,7 @@ class QuestionRepositoryImpl @Inject constructor(
     override suspend fun clearQuestionsByDiscipline(disciplineId: Long): Result<Unit> {
         return try {
             questionDao.deleteByDiscipline(disciplineId)
+            mockExamCacheService.invalidateCacheForDiscipline(disciplineId)
             Result.success(Unit)
         } catch (e: Exception) {
             Result.error("Falha ao limpar questões: ${e.localizedMessage}", e)
@@ -88,6 +98,9 @@ class QuestionRepositoryImpl @Inject constructor(
     override suspend fun saveMockExamAttempt(attempt: com.rememberflash.app.domain.model.MockExamAttempt): Result<Long> {
         return try {
             val id = mockExamAttemptDao.insertAttempt(attempt.toEntity())
+            attempt.contestId?.let { cId ->
+                mockExamCacheService.invalidateContestCache(cId)
+            }
             Result.success(id)
         } catch (e: Exception) {
             Result.error("Erro ao salvar tentativa de simulado: ${e.localizedMessage}", e)
@@ -125,6 +138,18 @@ class QuestionRepositoryImpl @Inject constructor(
         } catch (e: Exception) {
             Result.error("Falha ao limpar questões do tópico: ${e.localizedMessage}", e)
         }
+    }
+
+    override suspend fun getMockExamCacheAside(contestId: Long): Result<MockExamLookupResult> {
+        return mockExamCacheService.getMockExamCacheAside(contestId)
+    }
+
+    override suspend fun getMockExamRelationalBaseline(contestId: Long): Result<MockExamLookupResult> {
+        return mockExamCacheService.getMockExamRelationalBaseline(contestId)
+    }
+
+    override suspend fun invalidateMockExamCache(contestId: Long): Result<Boolean> {
+        return Result.success(mockExamCacheService.invalidateContestCache(contestId))
     }
 
     private fun com.rememberflash.app.data.local.database.entity.MockExamAttemptEntity.toDomain() = com.rememberflash.app.domain.model.MockExamAttempt(

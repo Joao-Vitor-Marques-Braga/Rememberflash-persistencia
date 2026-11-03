@@ -1,0 +1,14 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "mock_exams",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "contest_id", "order": "ASCENDING" },
+        { "fieldPath": "updated_at", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}
+

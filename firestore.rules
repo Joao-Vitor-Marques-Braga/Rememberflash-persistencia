@@ -1,0 +1,57 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Função auxiliar para validar autenticação do estudante/administrador
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Validação de integridade estrutural do documento desnormalizado de Simulado (MockExamDocument)
+    function isValidMockExamDocument(data) {
+      return data.keys().hasAll([
+        'contest_id',
+        'contest_title',
+        'organizer_name',
+        'total_questions',
+        'questions',
+        'version',
+        'created_at',
+        'updated_at',
+        'ttl_expires_at'
+      ])
+      && data.contest_id is int
+      && data.contest_title is string
+      && data.contest_title.size() > 0
+      && data.total_questions is int
+      && data.total_questions >= 0
+      && data.questions is list
+      && data.version is int
+      && data.ttl_expires_at is int;
+    }
+
+    // Coleção principal de simulados desnormalizados (Chave O(1): contest_{contest_id}_exam_full)
+    match /mock_exams/{examId} {
+      // Leitura ultrarrápida (Cache-Aside HIT) permitida para usuários autenticados
+      allow get, list: if isAuthenticated();
+
+      // Criação/Atualização do documento no Cache MISS ou atualização de versão com validação de schema
+      allow create, update: if isAuthenticated() && isValidMockExamDocument(request.resource.data);
+
+      // Deleção imediata na Invalidação de Escrita (Write Invalidation: DEL mock_exam:contest_{id}_exam_full)
+      allow delete: if isAuthenticated();
+
+      // Subcoleção aninhada para histórico detalhado de tentativas e refações do aluno
+      match /attempts/{attemptId} {
+        allow read: if isAuthenticated();
+        allow create: if isAuthenticated()
+          && request.resource.data.keys().hasAll(['score', 'total_questions', 'answers', 'times', 'created_at'])
+          && request.resource.data.score is int
+          && request.resource.data.total_questions is int;
+        allow update, delete: if isAuthenticated();
+      }
+    }
+  }
+}
+

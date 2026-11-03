@@ -9,14 +9,13 @@ import com.rememberflash.app.data.local.database.dao.EssayDao
 import com.rememberflash.app.data.local.database.dao.FlashcardDao
 import com.rememberflash.app.data.local.database.dao.QuestionDao
 import com.rememberflash.app.data.local.database.dao.ScheduleDao
+import com.rememberflash.app.data.local.database.dao.TopicDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
-
-import com.rememberflash.app.data.local.database.dao.TopicDao
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -68,4 +67,13 @@ object DatabaseModule {
 
     @Provides
     fun provideUserDao(database: RememberFlashDatabase): com.rememberflash.app.data.local.database.dao.UserDao = database.userDao()
+
+    @Provides
+    @Singleton
+    fun provideMockExamNoSqlDataSource(
+        @ApplicationContext context: Context
+    ): com.rememberflash.app.data.remote.firebase.MockExamNoSqlDataSource {
+        val firestoreDir = java.io.File(context.filesDir, "firestore_nosql")
+        return com.rememberflash.app.data.remote.firebase.FirestoreMockExamDataSource(firestoreDir)
+    }
 }
