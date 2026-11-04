@@ -1,7 +1,7 @@
 # RememberFlash — Persistência Poliglota (Relacional SQL Supabase + NoSQL Firebase Firestore / Cache-Aside)
 
 **Universidade de Rio Verde (UniRV) — Faculdade de Engenharia de Software**  
-**Disciplina:** ESW441 — Tópicos Especiais em Banco de Dados · **Turma:** A  
+**Disciplina:** ESW441 — Desenvolvimento de Software para persistencia · **Turma:** A  
 **Docente:** Prof. Me. Gustavo Martins Lima  
 
 ### Integrantes do Trio
